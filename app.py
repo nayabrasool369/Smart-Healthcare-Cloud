@@ -101,7 +101,8 @@ if menu == "📋 Patient Registration & Upload":
                 try:
                     if uploaded_file is not None:
                         file_bytes = uploaded_file.read()
-                        file_path = f"{patient_id}_{uploaded_file.name}"
+                        clean_name = uploaded_file.name.replace(" ", "_")
+                        file_path = f"{patient_id}_{clean_name}"
                         upload_endpoint = f"{SUPABASE_URL}/storage/v1/object/medical-reports/{file_path}"
                         file_headers = {
                             "apikey": SUPABASE_KEY,
@@ -120,7 +121,7 @@ if menu == "📋 Patient Registration & Upload":
                         "gender": gender,
                         "blood_group": blood_group,
                         "contact": contact,
-                        "diagnosis": diagnosis,
+                        "diagnosis": diagnosis.strip().title(),
                         "doctor_name": doctor_name,
                         "report_url": report_url
                     }
@@ -154,7 +155,12 @@ elif menu == "☁️ Cloud Patient Database":
             for row in records:
                 if row.get("report_url"):
                     found_files = True
-                    st.info(f"📄 **{row['patient_id']} — {row['full_name']}** ({row['diagnosis']})  |  [⬇️ Open / Download Cloud File]({row['report_url']})")
+                    clean_url = row["report_url"].replace(" ", "%20")
+                    col_a, col_b = st.columns((3, 1))
+                    with col_a:
+                        st.info(f"📄 **{row['patient_id']} — {row['full_name']}** ({row['diagnosis']})")
+                    with col_b:
+                        st.link_button("⬇️ Open / Download Report", clean_url)
             if not found_files:
                 st.caption("No scanned files attached yet.")
         else:
@@ -172,6 +178,7 @@ elif menu == "📊 Analytics & PDF Reports":
             st.warning("Add at least 1-2 patients first to view analytics.")
         else:
             df = pd.DataFrame(records)
+            df["diagnosis"] = df["diagnosis"].str.strip().str.title()
             files_count = df["report_url"].notna().sum()
 
             k1, k2, k3, k4 = st.columns(4)
@@ -205,7 +212,6 @@ elif menu == "📊 Analytics & PDF Reports":
             st.subheader("🖨️ Official Patient Medical Summary PDF Generator")
             selected_pid = st.selectbox("Select Patient ID:", df["patient_id"].tolist())
             patient_row = next(iter(df[df["patient_id"] == selected_pid].to_dict(orient="records")))
-
             if st.button("✨ Generate Official PDF Report"):
                 pdf = FPDF()
                 pdf.add_page()
